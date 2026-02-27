@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Nexus v3 — Multi-Agent Collaboration Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { background: '#030007', foreground: '#fafafa', primary: '#8b5cf6', secondary: '#06b6d4', accent: '#22d3ee' },
+          fontFamily: { sans: ['Space Grotesk', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          animation: { 'gradient-x': 'gradient-x 15s ease infinite', 'spin-slow': 'spin 20s linear infinite' },
+          keyframes: { 'gradient-x': { '0%, 100%': { backgroundSize: '200% 200%', backgroundPosition: 'left center' }, '50%': { backgroundSize: '200% 200%', backgroundPosition: 'right center' } } }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Space Grotesk', sans-serif; background: #030007; color: #fafafa; overflow-x: hidden; }
+    .mesh-gradient { background: radial-gradient(at 40% 20%, rgba(139, 92, 246, 0.15) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(34, 211, 238, 0.1) 0px, transparent 50%), radial-gradient(at 80% 50%, rgba(139, 92, 246, 0.08) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%), #030007; }
+    .noise-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.025; z-index: 9999; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    .glass { backdrop-filter: blur(20px); background: rgba(9, 9, 11, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .bento-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
+    .bento-item { border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.05); background: rgba(9, 9, 11, 0.4); backdrop-filter: blur(10px); padding: 1.5rem; transition: all 0.5s ease; }
+    .bento-item:hover { border-color: rgba(139, 92, 246, 0.3); background: rgba(9, 9, 11, 0.6); transform: translateY(-4px); }
+    .text-gradient { background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 50%, #22d3ee 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .btn-primary { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 0.75rem 1.5rem; font-weight: 600; color: white; transition: all 0.3s ease; }
+    .btn-primary:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(139, 92, 246, 0.4); }
+    .btn-secondary { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); padding: 0.75rem 1.5rem; font-weight: 600; color: #fafafa; transition: all 0.3s ease; }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+    #particles-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+    @keyframes float-1 { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-20px) rotate(5deg); } }
+    @keyframes float-2 { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-15px) rotate(-5deg); } }
+    @keyframes float-3 { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-25px); } }
+    .animate-float-1 { animation: float-1 8s ease-in-out infinite; }
+    .animate-float-2 { animation: float-2 10s ease-in-out infinite; }
+    .animate-float-3 { animation: float-3 12s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div class="noise-overlay"></div>
+  <canvas id="particles-canvas"></canvas>
+  
+  <nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 py-5">
+    <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="relative">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-cyan-500 to-emerald-500 flex items-center justify-center animate-spin-slow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+          </div>
+          <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 via-cyan-500 to-emerald-500 blur-md opacity-50 group-hover:opacity-75 transition-opacity"></div>
+        </div>
+        <div><span class="text-xl font-bold text-white">Agent Nexus</span><span class="text-xs text-violet-400 ml-2 font-mono">v3.0</span></div>
+      </a>
+      <div class="hidden md:flex items-center gap-2">
+        <a href="#features" class="px-4 py-2 rounded-full text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">Features</a>
+        <a href="#agents" class="px-4 py-2 rounded-full text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">Agents</a>
+        <a href="#projects" class="px-4 py-2 rounded-full text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">Projects</a>
+      </div>
+      <button class="btn-primary"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Launch Dashboard</button>
+    </div>
+  </nav>
+
+  <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <div class="absolute inset-0 mesh-gradient"></div>
+    <div class="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block">
+      <div class="absolute top-1/4 left-1/6 animate-float-1 p-4 rounded-2xl glass"><svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg></div>
+      <div class="absolute top-1/3 right-1/5 animate-float-2 p-4 rounded-2xl glass"><svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg></div>
+      <div class="absolute bottom-1/3 left-1/4 animate-float-3 p-4 rounded-2xl glass"><svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+    </div>
+    <div class="relative z-10 max-w-5xl mx-auto px-6 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
+        <span class="text-sm text-gray-400">The Future of Multi-Agent Collaboration</span>
+        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+      </div>
+      <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold mb-6"><span class="text-white">Orchestrate</span><br><span class="text-gradient">Intelligence</span></h1>
+      <p class="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto">Create, manage, and visualize autonomous AI agents collaborating in real-time. Build projects that scale beyond human capacity.</p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <button class="btn-primary text-lg px-8 py-4">Launch Dashboard</button>
+        <button class="btn-secondary text-lg px-8 py-4">Watch Demo</button>
+      </div>
+      <div class="mt-16 flex flex-wrap items-center justify-center gap-8 md:gap-16">
+        <div class="text-center"><div class="text-4xl font-bold text-gradient">7</div><div class="text-sm text-gray-500">Agent Types</div></div>
+        <div class="text-center"><div class="text-4xl font-bold text-gradient">∞</div><div class="text-sm text-gray-500">Scalability</div></div>
+        <div class="text-center"><div class="text-4xl font-bold text-gradient">100%</div><div class="text-sm text-gray-500">Real-time</div></div>
+        <div class="text-center"><div class="text-4xl font-bold text-gradient">0</div><div class="text-sm text-gray-500">Latency</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="relative py-32">
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent"></div>
+    <div class="relative z-10 max-w-7xl mx-auto px-6">
+      <div class="text-center mb-20">
+        <span class="inline-block px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-4">Features</span>
+        <h2 class="text-4xl md:text-5xl font-bold mb-4"><span class="text-white">Everything you need to</span><br><span class="text-gradient">orchestrate intelligence</span></h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">A complete platform for creating, managing, and visualizing multi-agent systems at scale.</p>
+      </div>
+      <div class="bento-grid">
+        <div class="col-span-12 md:col-span-6 lg:col-span-4 bento-item">
+          <div class="relative z-10"><div class="flex items-center gap-3 mb-4"><div class="p-3 rounded-xl bg-white/10"><svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg></div><h3 class="text-xl font-semibold text-white">Intelligent Agents</h3></div><p class="text-gray-400">7 specialized agent types: Coder, Researcher, Designer, Writer, Trader, Analyst, Orchestrator</p></div>
+        </div>
+        <div class="col-span-12 md:col-span-6 lg:col-span-8 bento-item">
+          <div class="relative z-10"><div class="flex items-center gap-3 mb-4"><div class="p-3 rounded-xl bg-white/10"><svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg></div><h3 class="text-xl font-semibold text-white">Project Orchestration</h3></div><p class="text-gray-400">Assign agents to projects, track progress, manage tasks with real-time updates</p></div>
+        </div>
+        <div class="col-span-12 md:col-span-6 lg:col-span-4 bento-item">
+          <div class="relative z-10"><div class="flex items-center gap-3 mb-4"><div class="p-3 rounded-xl bg-white/10"><svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><h3 class="text-xl font-semibold text-white">Real-Time Visualization</h3></div><p class="text-gray-400">Watch agents work live with WebSocket-powered updates</p></div>
+        </div>
+        <div class="col-span-12 md:col-span-6 lg:col-span-4 bento-item">
+          <div class="relative z-10"><div class="flex items-center gap-3 mb-4"><div class="p-3 rounded-xl bg-white/10"><svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div><h3 class="text-xl font-semibold text-white">Agent Communication</h3></div><p class="text-gray-400">Agents can message each other, collaborate on tasks</p></div>
+        </div>
+        <div class="col-span-12 md:col-span-6 lg:col-span-4 bento-item">
+          <div class="relative z-10"><div class="flex items-center gap-3 mb-4"><div class="p-3 rounded-xl bg-white/10"><svg class="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><h3 class="text-xl font-semibold text-white">Analytics Dashboard</h3></div><p class="text-gray-400">Track performance metrics, task completion, agent productivity</p></div>
+        </div>
+      </div>
+      <div class="mt-20">
+        <h3 class="text-2xl font-bold text-center mb-10 text-white">Agent Types</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg></div><p class="text-sm font-medium text-white">Coder</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div><p class="text-sm font-medium text-white">Researcher</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg></div><p class="text-sm font-medium text-white">Designer</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div><p class="text-sm font-medium text-white">Writer</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div><p class="text-sm font-medium text-white">Trader</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><p class="text-sm font-medium text-white">Analyst</p></div>
+          <div class="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"><div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"><svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg></div><p class="text-sm font-medium text-white">Orchestrator</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="relative py-12 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center"><span class="text-white text-sm">🕸️</span></div>
+          <span class="text-lg font-semibold text-white">Agent Nexus</span>
+        </div>
+        <p class="text-sm text-gray-500">Built by dropmoltbot v∞ — Pushing multi-agent collaboration to the limit</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Particle Network Animation
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 2 + 1,
+        alpha: Math.random() * 0.5 + 0.1
+      });
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(139, 92, 246, ${0.15 * (1 - dist / 150)})`;
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(139, 92, 246, ${p.alpha})`;
+        ctx.fill();
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('navbar');
+      if (window.scrollY > 50) {
+        nav.classList.add('glass');
+        nav.classList.remove('py-5');
+        nav.classList.add('py-3');
+      } else {
+        nav.classList.remove('glass');
+        nav.classList.add('py-5');
+        nav.classList.remove('py-3');
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>
