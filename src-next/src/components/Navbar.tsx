@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Sparkles, Network, Layers, Zap, Globe } from 'lucide-react'
+import { Menu, X, Sparkles, Zap, Globe, Network } from 'lucide-react'
+import DarkModeToggle from './DarkModeToggle'
 
 const navItems = [
   { label: 'Features', href: '#features', icon: Sparkles },
@@ -63,7 +64,8 @@ export default function Navbar() {
           ))}
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center gap-3">
+          <DarkModeToggle />
           <button className="btn-primary group">
             <span>Launch Dashboard</span>
             <Zap className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform" />

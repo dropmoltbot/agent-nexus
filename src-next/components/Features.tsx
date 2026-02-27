@@ -9,11 +9,11 @@ import {
   TrendingUp, 
   BarChart3,
   Workflow,
-  Cpu,
-  Globe,
-  MessageSquare,
   Zap,
-  Shield
+  MessageSquare,
+  Shield,
+  Cpu,
+  Globe
 } from 'lucide-react'
 
 const features = [
@@ -60,7 +60,7 @@ const features = [
   {
     icon: Shield,
     title: 'Enterprise Security',
-    description: 'Role-based access, encrypted connections, audit logs',
+    description: 'Role-based access, encrypted connections, audit logs, SOC2 compliant',
     colSpan: 'col-span-12',
     gradient: 'from-slate-500/20 to-zinc-500/20',
     borderColor: 'hover:border-slate-500/30',
@@ -80,11 +80,9 @@ const agentTypes = [
 export default function Features() {
   return (
     <section id="features" className="relative py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6">
-        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -92,17 +90,13 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
         >
-          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-4">
             Features
           </span>
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-              Everything you need to
-            </span>
+            <span className="text-white">Everything you need to</span>
             <br />
-            <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              orchestrate intelligence
-            </span>
+            <span className="text-gradient">orchestrate intelligence</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             A complete platform for creating, managing, and visualizing multi-agent systems at scale.
@@ -110,7 +104,7 @@ export default function Features() {
         </motion.div>
 
         {/* Bento Grid */}
-        <div className="bento-grid">
+        <div className="grid grid-cols-12 gap-4">
           {features.map((feature, index) => (
             <motion.div
               key={index}
@@ -118,15 +112,18 @@ export default function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className={`bento-item ${feature.colSpan} ${feature.borderColor}`}
+              className={`${feature.colSpan} bento-item group cursor-pointer`}
             >
-              <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${feature.gradient} opacity-50`} />
+              <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div className="absolute inset-0 rounded-3xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 rounded-xl bg-white/10">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                  <div className="p-3 rounded-xl bg-white/10 group-hover:scale-110 transition-transform duration-300">
+                    <feature.icon className="w-6 h-6 text-violet-400" />
                   </div>
-                  <h3 className="text-xl font-semibold">{feature.title}</h3>
+                  <h3 className="text-xl font-semibold text-white">{feature.title}</h3>
                 </div>
                 <p className="text-muted-foreground">{feature.description}</p>
               </div>
@@ -142,7 +139,7 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           className="mt-20"
         >
-          <h3 className="text-2xl font-bold text-center mb-10">Agent Types</h3>
+          <h3 className="text-2xl font-bold text-center mb-10 text-white">Agent Types</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             {agentTypes.map((agent, index) => (
               <motion.div
@@ -152,12 +149,16 @@ export default function Features() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
                 whileHover={{ scale: 1.05 }}
-                className="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+                className="group p-4 rounded-2xl bg-card/40 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-center"
               >
-                <div className={`w-12 h-12 rounded-xl ${agent.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className={`w-12 h-12 rounded-xl ${agent.bg} flex items-center justify-center mx-auto mb-3`}
+                >
                   <agent.icon className={`w-6 h-6 ${agent.color}`} />
-                </div>
-                <p className="text-sm font-medium text-center">{agent.name}</p>
+                </motion.div>
+                <p className="text-sm font-medium text-white">{agent.name}</p>
               </motion.div>
             ))}
           </div>

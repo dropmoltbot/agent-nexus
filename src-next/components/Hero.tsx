@@ -1,25 +1,14 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  ArrowRight, 
-  Play, 
-  Sparkles, 
-  Cpu, 
-  Network,
-  Zap,
-  Globe,
-  Boxes,
-  Workflow
-} from 'lucide-react'
+import { ArrowRight, Play, Sparkles, Cpu, Network, Boxes, Workflow, Zap, Globe } from 'lucide-react'
 
 const floatingIcons = [
-  { icon: Cpu, delay: 0, x: '10%', y: '20%' },
-  { icon: Network, delay: 0.5, x: '85%', y: '15%' },
-  { icon: Boxes, delay: 1, x: '15%', y: '70%' },
-  { icon: Workflow, delay: 1.5, x: '80%', y: '75%' },
-  { icon: Zap, delay: 2, x: '50%', y: '10%' },
+  { icon: Cpu, delay: 0, x: '8%', y: '20%' },
+  { icon: Network, delay: 0.5, x: '88%', y: '15%' },
+  { icon: Boxes, delay: 1, x: '12%', y: '75%' },
+  { icon: Workflow, delay: 1.5, x: '85%', y: '70%' },
 ]
 
 export default function Hero() {
@@ -36,16 +25,16 @@ export default function Hero() {
     canvas.height = window.innerHeight
 
     const particles: { x: number; y: number; vx: number; vy: number; size: number; alpha: number }[] = []
-    const particleCount = 80
+    const particleCount = 60
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
         size: Math.random() * 2 + 1,
-        alpha: Math.random() * 0.5 + 0.1,
+        alpha: Math.random() * 0.4 + 0.1,
       })
     }
 
@@ -61,9 +50,9 @@ export default function Hero() {
           const dy = particles[i].y - particles[j].y
           const distance = Math.sqrt(dx * dx + dy * dy)
 
-          if (distance < 150) {
+          if (distance < 120) {
             ctx.beginPath()
-            ctx.strokeStyle = `rgba(139, 92, 246, ${0.15 * (1 - distance / 150)})`
+            ctx.strokeStyle = `rgba(139, 92, 246, ${0.12 * (1 - distance / 120)})`
             ctx.lineWidth = 0.5
             ctx.moveTo(particles[i].x, particles[i].y)
             ctx.lineTo(particles[j].x, particles[j].y)
@@ -72,7 +61,6 @@ export default function Hero() {
         }
       }
 
-      // Update and draw particles
       particles.forEach((p) => {
         p.x += p.vx
         p.y += p.vy
@@ -106,9 +94,12 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Animated Background */}
       <div className="absolute inset-0 mesh-gradient" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent" />
       <canvas ref={canvasRef} className="absolute inset-0" />
+
+      {/* Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/20 rounded-full blur-[120px]" />
 
       {/* Floating Icons */}
       {floatingIcons.map((item, index) => (
@@ -121,53 +112,40 @@ export default function Hero() {
           style={{ left: item.x, top: item.y }}
         >
           <motion.div
-            animate={{ 
-              y: [0, -20, 0],
-              rotate: [0, 10, -10, 0]
-            }}
-            transition={{ 
-              duration: 6, 
-              repeat: Infinity, 
-              delay: item.delay 
-            }}
-            className="p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10"
+            animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 6, repeat: Infinity, delay: item.delay }}
+            className="p-4 rounded-2xl glass"
           >
-            <item.icon className="w-6 h-6 text-primary" />
+            <item.icon className="w-6 h-6 text-violet-400" />
           </motion.div>
         </motion.div>
       ))}
 
-      {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-        {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8"
         >
-          <Sparkles className="w-4 h-4 text-secondary" />
-          <span className="text-sm text-muted-foreground">The Future of Multi-Agent Collaboration</span>
+          <Sparkles className="w-4 h-4 text-cyan-400" />
+          <span className="text-sm text-gray-400">The Future of Multi-Agent Collaboration</span>
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         </motion.div>
 
-        {/* Title */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6"
         >
-          <span className="bg-gradient-to-r from-white via-primary to-secondary bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-white via-violet-200 to-white bg-[length:200%_auto] bg-clip-text text-transparent animate-gradient-x">
             Orchestrate
           </span>
           <br />
-          <span className="bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-            Intelligence
-          </span>
+          <span className="text-gradient">Intelligence</span>
         </motion.h1>
 
-        {/* Subtitle */}
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -178,22 +156,29 @@ export default function Hero() {
           Build projects that scale beyond human capacity.
         </motion.p>
 
-        {/* CTA Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <button className="btn-primary group text-lg px-8 py-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="group btn-primary text-lg px-8 py-4"
+          >
             <Globe className="w-5 h-5 mr-2" />
             Launch Dashboard
             <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-          </button>
-          <button className="btn-secondary group text-lg px-8 py-4">
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-secondary text-lg px-8 py-4"
+          >
             <Play className="w-5 h-5 mr-2" />
             Watch Demo
-          </button>
+          </motion.button>
         </motion.div>
 
         {/* Stats */}
@@ -207,12 +192,18 @@ export default function Hero() {
             { value: '7', label: 'Agent Types' },
             { value: '∞', label: 'Scalability' },
             { value: '100%', label: 'Real-time' },
-            { value: '0', label: 'Latency' },
+            { value: '0ms', label: 'Latency' },
           ].map((stat, index) => (
-            <div key={index} className="text-center">
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 + index * 0.1 }}
+              className="text-center"
+            >
               <div className="text-3xl md:text-4xl font-bold text-gradient">{stat.value}</div>
               <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
+            </motion.div>
           ))}
         </motion.div>
       </div>
@@ -225,14 +216,14 @@ export default function Hero() {
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
       >
         <motion.div
-          animate={{ y: [0, 10, 0] }}
+          animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
+          className="w-6 h-10 rounded-full border border-white/20 flex items-start justify-center p-2"
         >
           <motion.div
-            animate={{ opacity: [1, 0, 1], y: [0, 12, 0] }}
+            animate={{ opacity: [1, 0, 1], y: [0, 8, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="w-1 h-2 bg-primary rounded-full"
+            className="w-1 h-2 bg-violet-500 rounded-full"
           />
         </motion.div>
       </motion.div>
