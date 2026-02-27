@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
+  <defs>
+    <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="400" height="100" fill="#0a0a0f"/>
+  
+  <!-- Loading text -->
+  <text x="200" y="25" text-anchor="middle" fill="#8b5cf6" font-family="monospace" font-size="14">
+    <tspan>LOADING</tspan>
+    <tspan>
+      <animate attributeName="opacity" values="1;0;1" dur="1.5s" repeatCount="indefinite"/>
+    </tspan>
+  </text>
+  
+  <!-- Progress bar background -->
+  <rect x="50" y="40" width="300" height="20" rx="10" fill="#1f2937"/>
+  
+  <!-- Animated progress bar -->
+  <rect x="50" y="40" width="50" height="20" rx="10" fill="url(#loadGrad)">
+    <animate attributeName="x" values="50;300;50" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Glow effect -->
+  <rect x="50" y="40" width="50" height="20" rx="10" fill="url(#loadGrad)" opacity="0.5">
+    <animate attributeName="x" values="50;300;50" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="width" values="50;100;50" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Percentage -->
+  <text x="200" y="80" text-anchor="middle" fill="#22d3ee" font-family="monospace" font-size="12">
+    <tspan>Initializing</tspan>
+    <tspan>
+      <animate attributeName="opacity" values="1;0.5;1" dur="0.5s" repeatCount="indefinite"/>
+    </tspan>
+  </text>
+</svg>

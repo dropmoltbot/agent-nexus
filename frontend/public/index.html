@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🕸️ Agent Nexus — Multi-Agent Collaboration Platform</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: #0a0a0f; color: #e0e0e0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .grid-bg { background-image: linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px); background-size: 50px 50px; animation: gridMove 20s linear infinite; }
+    @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 50px 50px; } }
+    .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+    .agent-active { animation: pulse-glow 2s infinite; }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.2); } 50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.5); } }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @keyframes blink { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0.5; } }
+    .float { animation: float 3s ease-in-out infinite; }
+    .progress-bar { background: linear-gradient(90deg, #8b5cf6, #22d3ee); }
+    .matrix-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.03; z-index: 0; }
+    .agent-card { transition: all 0.3s ease; }
+    .agent-card:hover { transform: translateY(-5px); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .status-working { background: #eab308; box-shadow: 0 0 8px #eab308; animation: blink 0.5s infinite; }
+    .status-idle { background: #6b7280; }
+    .gradient-border { position: relative; background: linear-gradient(#1f2937, #1f2937) padding-box, linear-gradient(45deg, #8b5cf6, #22d3ee) border-box; border: 2px solid transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <canvas id="matrix" class="matrix-bg"></canvas>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const io = window.io;
+    
+    function initMatrix() {
+      const canvas = document.getElementById('matrix');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+      const fontSize = 14;
+      const columns = canvas.width / fontSize;
+      const drops = Array(Math.floor(columns)).fill(1);
+      function draw() {
+        ctx.fillStyle = 'rgba(10, 10, 15, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#8b5cf6';
+        ctx.font = fontSize + 'px monospace';
+        for (let i = 0; i < drops.length; i++) {
+          const char = chars[Math.floor(Math.random() * chars.length)];
+          ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+          drops[i]++;
+        }
+      }
+      setInterval(draw, 50);
+    }
+    
+    const API = 'http://localhost:3001/api';
+    async function fetchAgents() { const res = await fetch(`${API}/agents`); return res.json(); }
+    async function createAgent(name, type) { const res = await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, type }) }); return res.json(); }
+    async function deleteAgent(id) { await fetch(`${API}/agents/${id}`, { method: 'DELETE' }); }
+    async function fetchProjects() { const res = await fetch(`${API}/projects`); return res.json(); }
+    async function createProject(name, description, agentIds) { const res = await fetch(`${API}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description, agentIds }) }); return res.json(); }
+    async function fetchStats() { const res = await fetch(`${API}/stats`); return res.json(); }
+    async function fetchLogs() { const res = await fetch(`${API}/logs?limit=100`); return res.json(); }
+    async function addTask(projectId, title, description, assignedTo, priority = 'medium') { const res = await fetch(`${API}/projects/${projectId}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, description, assignedTo, priority }) }); return res.json(); }
+    
+    function Header({ time }) {
+      return (
+        <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+          <div className="flex items-center gap-4">
+            <div className="relative"><span className="text-4xl float">🕸️</span><div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div></div>
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">Agent Nexus <span className="text-xs bg-purple-600/30 text-purple-400 px-2 py-1 rounded-full">v2.0</span></h1>
+              <p className="text-xs text-gray-400 mono flex items-center gap-2"><span className="status-dot status-online"></span>Connected • {time}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 text-sm"><span className="text-gray-400">System:</span><span className="text-green-400">NOMINAL</span></div>
+            <div className="w-px h-8 bg-gray-700"></div>
+            <button className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-purple-500/30">⚡ Quick Action</button>
+          </div>
+        </header>
+      );
+    }
+    
+    function StatsPanel({ stats }) {
+      const statsData = [
+        { label: 'Total Agents', value: stats.agents?.total || 0, active: stats.agents?.active || 0, color: 'purple', icon: '🤖' },
+        { label: 'Projects', value: stats.projects?.total || 0, active: stats.projects?.active || 0, color: 'cyan', icon: '📁' },
+        { label: 'Tasks Done', value: stats.tasks?.completed || 0, pending: stats.tasks?.pending || 0, color: 'green', icon: '✅' },
+        { label: 'Events', value: stats.logs || 0, msgs: stats.messages || 0, color: 'yellow', icon: '📡' }
+      ];
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {statsData.map((stat, i) => (
+            <div key={i} className="gradient-border rounded-xl p-4 bg-gray-800/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl">{stat.icon}</span>
+                <span className={`text-3xl font-bold text-${stat.color}-400`}>{stat.value}</span>
+              </div>
+              <div className="text-sm text-gray-400">{stat.label}</div>
+              <div className="text-xs text-gray-500 mt-1 flex gap-3">
+                {stat.active !== undefined && <span className="text-green-400">● {stat.active} active</span>}
+                {stat.pending !== undefined && <span className="text-yellow-400">○ {stat.pending} pending</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    function AgentCard({ agent, onDelete, onAction }) {
+      const statusColors = { idle: 'status-idle', working: 'status-working', thinking: 'status-working', completed: 'status-online', error: 'bg-red-500' };
+      const typeEmojis = { coder: '👨‍💻', researcher: '🔍', designer: '🎨', writer: '✍️', trader: '📈', analyst: '📊', orchestrator: '🎬' };
+      return (
+        <div className={`agent-card gradient-border rounded-xl p-4 bg-gray-800/60 ${agent.status !== 'idle' ? 'agent-active' : ''}`}>
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="relative"><span className="text-3xl">{typeEmojis[agent.type] || '🤖'}</span><div className={`absolute -bottom-1 -right-1 status-dot ${statusColors[agent.status] || 'status-idle'}`}></div></div>
+              <div><h3 className="font-semibold text-white">{agent.name}</h3><p className="text-xs text-gray-400">{agent.type}</p></div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mb-3 line-clamp-2">{agent.role}</p>
+          {agent.currentTask && <div className="bg-gray-700/50 rounded-lg p-2 mb-3 border border-purple-500/30"><p className="text-xs text-purple-400 mono flex items-center gap-1"><span className="animate-pulse">▶</span> {agent.currentTask}</p></div>}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2"><span className="text-xs text-gray-500 mono">{agent.stats?.tasksCompleted || 0} tasks</span><span className="text-xs text-gray-600">|</span><span className="text-xs text-gray-500">{agent.status}</span></div>
+            <div className="flex gap-2">
+              <button onClick={() => onAction(agent.id, 'working')} className="text-xs bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-2 py-1 rounded">Start</button>
+              <button onClick={() => onDelete(agent.id)} className="text-xs bg-red-600/20 hover:bg-red-600/40 text-red-400 px-2 py-1 rounded">×</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    function ProjectCard({ project, agents, onAddTask }) {
+      const statusColors = { planning: 'bg-blue-500', active: 'bg-green-500', completed: 'bg-purple-500', paused: 'bg-yellow-500' };
+      return (
+        <div className="agent-card gradient-border rounded-xl p-4 bg-gray-800/60">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3"><span className="text-2xl">📁</span><div><h3 className="font-semibold text-white">{project.name}</h3><p className="text-xs text-gray-400">{project.description || 'No description'}</p></div></div>
+            <span className={`px-2 py-1 rounded-full text-xs ${statusColors[project.status]} text-white`}>{project.status}</span>
+          </div>
+          <div className="mb-4">
+            <div className="flex justify-between text-xs mb-2"><span className="text-gray-400">Progress</span><span className="text-cyan-400 mono font-semibold">{project.progress || 0}%</span></div>
+            <div className="h-3 bg-gray-700 rounded-full overflow-hidden"><div className="progress-bar h-full transition-all duration-700" style={{ width: `${project.progress || 0}%` }}></div></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex -space-x-2">
+              {project.agents?.slice(0, 4).map((id, i) => { const agent = agents.find(a => a.id === id); return <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 border-2 border-gray-800 flex items-center justify-center text-sm" title={agent?.name}>{agent?.emoji || '?'}</div>; })}
+              {project.agents?.length > 4 && <div className="w-8 h-8 rounded-full bg-gray-600 border-2 border-gray-800 flex items-center justify-center text-xs">+{project.agents.length - 4}</div>}
+            </div>
+            <button onClick={() => onAddTask(project.id)} className="text-xs bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 rounded-lg">+ Task</button>
+          </div>
+        </div>
+      );
+    }
+    
+    function LogPanel({ logs }) {
+      return (
+        <div className="gradient-border rounded-xl border border-gray-800 h-80 overflow-hidden flex flex-col bg-gray-900/50">
+          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between bg-gray-800/30">
+            <div className="flex items-center gap-2"><span className="text-lg">📋</span><h3 className="font-semibold text-white">Activity Log</h3><span className="text-xs bg-purple-600/30 text-purple-400 px-2 py-0.5 rounded-full">{logs.length} events</span></div>
+            <div className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span><span className="text-xs text-gray-400">Live</span></div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs">
+            {logs.slice().reverse().map((log, i) => (
+              <div key={log.id || i} className="flex items-start gap-3 hover:bg-gray-800/30 p-1 rounded">
+                <span className="text-gray-600 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                <span className={log.type.includes('CREATED') ? 'text-green-400' : log.type.includes('COMPLETED') ? 'text-cyan-400' : log.type.includes('ERROR') ? 'text-red-400' : 'text-gray-300'}>{log.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    function CreateAgentModal({ onClose, onSubmit }) {
+      const [name, setName] = useState('');
+      const [type, setType] = useState('coder');
+      const types = [
+        { id: 'coder', emoji: '👨‍💻', name: 'Coder', desc: 'Code development' },
+        { id: 'researcher', emoji: '🔍', name: 'Researcher', desc: 'Information gathering' },
+        { id: 'designer', emoji: '🎨', name: 'Designer', desc: 'UI/UX & visuals' },
+        { id: 'writer', emoji: '✍️', name: 'Writer', desc: 'Content & docs' },
+        { id: 'trader', emoji: '📈', name: 'Trader', desc: 'Market analysis' },
+        { id: 'analyst', emoji: '📊', name: 'Analyst', desc: 'Data & metrics' },
+        { id: 'orchestrator', emoji: '🎬', name: 'Orchestrator', desc: 'Coordination' },
+      ];
+      return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><span>➕</span> Create Agent</h2>
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              {types.map(t => (
+                <button key={t.id} onClick={() => setType(t.id)} className={`p-4 rounded-xl border text-left transition-all ${type === t.id ? 'border-purple-500 bg-purple-500/20' : 'border-gray-700 hover:border-gray-600'}`}>
+                  <div className="flex items-center gap-2"><span className="text-xl">{t.emoji}</span><span className="text-sm text-white">{t.name}</span></div>
+                  <p className="text-xs text-gray-400 mt-1">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Agent name (optional)" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-6" />
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400">Cancel</button>
+              <button onClick={() => onSubmit(name, type)} className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold">Create</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    function CreateProjectModal({ agents, onClose, onSubmit }) {
+      const [name, setName] = useState('');
+      const [description, setDescription] = useState('');
+      const [selectedAgents, setSelectedAgents] = useState([]);
+      return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><span>📁</span> Create Project</h2>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Project name" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4" />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4 resize-none" />
+            <div className="mb-6 max-h-40 overflow-y-auto space-y-2 bg-gray-800/50 rounded-lg p-3">
+              {agents.map(agent => (
+                <label key={agent.id} className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={selectedAgents.includes(agent.id)} onChange={e => e.target.checked ? setSelectedAgents([...selectedAgents, agent.id]) : setSelectedAgents(selectedAgents.filter(id => id !== agent.id))} className="w-4 h-4" />
+                  <span className="text-lg">{agent.emoji}</span><span className="text-sm text-white">{agent.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400">Cancel</button>
+              <button onClick={() => onSubmit(name, description, selectedAgents)} className="flex-1 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold">Create</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    function AddTaskModal({ projectId, agents, onClose, onSubmit }) {
+      const [title, setTitle] = useState('');
+      const [description, setDescription] = useState('');
+      const [assignedTo, setAssignedTo] = useState('');
+      return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><span>✅</span> Add Task</h2>
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4" />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4 resize-none" />
+            <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white mb-6">
+              <option value="">Unassigned</option>
+              {agents.map(agent => <option key={agent.id} value={agent.id}>{agent.emoji} {agent.name}</option>)}
+            </select>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400">Cancel</button>
+              <button onClick={() => onSubmit(projectId, title, description, assignedTo)} className="flex-1 py-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold">Add</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    function App() {
+      const [agents, setAgents] = useState([]);
+      const [projects, setProjects] = useState([]);
+      const [stats, setStats] = useState({});
+      const [logs, setLogs] = useState([]);
+      const [time, setTime] = useState('');
+      const [showAgentModal, setShowAgentModal] = useState(false);
+      const [showProjectModal, setShowProjectModal] = useState(false);
+      const [addTaskData, setAddTaskData] = useState(null);
+      
+      useEffect(() => {
+        initMatrix();
+        loadData();
+        const ws = io('http://localhost:3001');
+        ws.on('init', (data) => { setAgents(data.agents); setProjects(data.projects); setLogs(data.logs); });
+        ws.on('agent:created', (agent) => setAgents(prev => [...prev, agent]));
+        ws.on('agent:deleted', ({ id }) => setAgents(prev => prev.filter(a => a.id !== id)));
+        ws.on('agent:updated', (agent) => setAgents(prev => prev.map(a => a.id === agent.id ? agent : a)));
+        ws.on('project:created', (project) => setProjects(prev => [...prev, project]));
+        ws.on('project:updated', (project) => setProjects(prev => prev.map(p => p.id === project.id ? project : p)));
+        ws.on('log:new', (log) => setLogs(prev => [...prev, log]));
+        const interval = setInterval(() => fetchStats().then(setStats), 5000);
+        return () => { ws.disconnect(); clearInterval(interval); };
+      }, []);
+      
+      useEffect(() => {
+        const updateTime = () => setTime(new Date().toLocaleTimeString());
+        updateTime();
+        const t = setInterval(updateTime, 1000);
+        return () => clearInterval(t);
+      }, []);
+      
+      async function loadData() { setAgents(await fetchAgents()); setProjects(await fetchProjects()); setStats(await fetchStats()); setLogs(await fetchLogs()); }
+      async function handleCreateAgent(name, type) { await createAgent(name, type); setShowAgentModal(false); }
+      async function handleDeleteAgent(id) { await deleteAgent(id); }
+      async function handleCreateProject(name, description, agentIds) { await createProject(name, description, agentIds); setShowProjectModal(false); }
+      async function handleAddTask(projectId, title, description, assignedTo) { await addTask(projectId, title, description, assignedTo); setAddTaskData(null); }
+      async function handleAgentAction(agentId, action) { const res = await fetch(`${API}/agents/${agentId}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }); }
+      
+      return (
+        <div className="min-h-screen grid-bg">
+          <Header time={time} />
+          <main className="p-6 max-w-7xl mx-auto">
+            <StatsPanel stats={stats} />
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2"><span>🤖</span> Agents ({agents.length})</h2>
+                <button onClick={() => setShowAgentModal(true)} className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-sm font-semibold">+ Add Agent</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {agents.map(agent => <AgentCard key={agent.id} agent={agent} onDelete={handleDeleteAgent} onAction={handleAgentAction} />)}
+                {agents.length === 0 && <div className="col-span-full text-center py-8 text-gray-500">No agents yet. Create one!</div>}
+              </div>
+            </div>
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2"><span>📁</span> Projects ({projects.length})</h2>
+                <button onClick={() => setShowProjectModal(true)} className="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm font-semibold">+ New Project</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projects.map(project => <ProjectCard key={project.id} project={project} agents={agents} onAddTask={(id) => setAddTaskData(id)} />)}
+              </div>
+            </div>
+            <LogPanel logs={logs} />
+          </main>
+          {showAgentModal && <CreateAgentModal onClose={() => setShowAgentModal(false)} onSubmit={handleCreateAgent} />}
+          {showProjectModal && <CreateProjectModal agents={agents} onClose={() => setShowProjectModal(false)} onSubmit={handleCreateProject} />}
+          {addTaskData && <AddTaskModal projectId={addTaskData} agents={agents} onClose={() => setAddTaskData(null)} onSubmit={handleAddTask} />}
+        </div>
+      );
+    }
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
